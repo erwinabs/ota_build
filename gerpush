@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+
+function printhelp {
+echo "Usage: gerpush <options>"
+echo "options:"
+echo "    -t, --topic      - Push with specified topic"
+echo "    -b, --branch     - Push with specified branch (default: 10.0)"
+echo "    -f, --force      - Push with force option (DANGEROUS!!!)"
+echo "    -d, --direct     - Push directly (ie for pushing merges)"
+echo "    -h, --help       - Print this help"
+echo " "
+echo " example: gerpush -b=9.0-caf-8998 -t=test"
+}
+
+for i in "$@"
+do
+case $i in
+    -t=*|--topic=*)
+    TOPIC="${i#*=}"
+    shift # past argument=value
+    ;;
+    -b=*|--branch=*)
+    BRANCH="${i#*=}"
+    shift # past argument=value
+    ;;
+    -f|--force)
+    FORCE="-f"
+    shift # past argument with no value
+    ;;
+    -d|--direct)
+    HEADS="heads"
+    shift # past argument with no value
+    ;;
+    -h|--help)
+    HELP="y"
+    shift # past argument with no value
+    ;;
+    *)
+          # unknown option
+    ;;
+esac
+done
+
+if [[ $HELP = "y" ]]
+    then printhelp
+    exit
+fi
+
+if [[ $FORCE = "-f" ]]
+then
+    echo -n "Do you understand what you doing? (type YES for continue) "
+    read answer
+if [[ $answer != "YES" ]]
+then
+    echo "Aborting..."
+    exit
+fi
+fi
+
+if [[ $BRANCH = "" ]]
+    then BRANCH="10.0"
+fi
+
+
+#get project origin
+remote_project_devices="$(git remote -v | awk '{print $2}' |grep github.com/SyberiaProject-Devices | head -1)"
+remote_project_syberia="$(git remote -v | awk '{print $2}' |grep github.com/syberia-project | head -1)"
+
+if [[ $remote_project_devices = "" ]]
+then
+remote_project=`echo "$remote_project_syberia" | sed -e 's/https:\/\/github.com/ssh:\/\/gerrit.syberiaos.com:29418/'`
+else
+remote_project=`echo "$remote_project_devices" | sed -e 's/https:\/\/github.com/ssh:\/\/gerrit.syberiaos.com:29418/'`
+fi
+
+if [[ $HEADS != "heads" ]]
+then
+    HEADS="for"
+fi
+
+git push $FORCE $remote_project HEAD:refs/$HEADS/$BRANCH -o topic=$TOPIC
